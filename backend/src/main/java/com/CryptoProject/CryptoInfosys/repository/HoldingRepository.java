@@ -8,4 +8,6 @@ import java.util.List;
 
 public interface HoldingRepository extends JpaRepository<Holding, Integer> {
     List<Holding> findByUser(User user);
+    Holding findByUserAndSymbol(User user, String symbol);
+    void deleteByUser(User user);
 }

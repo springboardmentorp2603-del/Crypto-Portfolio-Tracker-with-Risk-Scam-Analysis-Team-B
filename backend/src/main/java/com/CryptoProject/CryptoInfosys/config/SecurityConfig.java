@@ -31,8 +31,18 @@ public class SecurityConfig {
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                // 🔥 ALLOW PREFLIGHT REQUESTS
+                .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+
+                // PUBLIC
                 .requestMatchers("/auth/**").permitAll()
+                .requestMatchers("/pricing/**").permitAll() 
+                // PROTECTED
                 .requestMatchers("/holdings/**").authenticated()
+                .requestMatchers("/trades/**").authenticated()
+                .requestMatchers("/risk-alerts/**").permitAll()
+                .requestMatchers("/pnl/**").permitAll()
+
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
@@ -51,3 +61,4 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 }
+

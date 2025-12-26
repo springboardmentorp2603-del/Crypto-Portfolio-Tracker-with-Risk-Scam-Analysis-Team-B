@@ -8,7 +8,7 @@ public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Long id; 
 
     @Column(nullable = false)
     private String name;
@@ -21,7 +21,7 @@ public class User {
 
     public User() {}
 
-    public User(Integer id, String name, String email, String password) {
+    public User(Long id, String name, String email, String password) {
         this.id = id;
         this.name = name;
         this.email = email;
@@ -32,12 +32,12 @@ public class User {
     public static Builder builder() { return new Builder(); }
 
     public static class Builder {
-        private Integer id;
+        private Long id;
         private String name;
         private String email;
         private String password;
 
-        public Builder id(Integer id) { this.id = id; return this; }
+        public Builder id(Long id) { this.id = id; return this; }
         public Builder name(String name) { this.name = name; return this; }
         public Builder email(String email) { this.email = email; return this; }
         public Builder password(String password) { this.password = password; return this; }
@@ -45,8 +45,8 @@ public class User {
     }
 
     // getters & setters
-    public Integer getId() { return id; }
-    public void setId(Integer id) { this.id = id; }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }

@@ -1,225 +1,215 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import DashboardLayout from "../layout/DashboardLayout";
 import api from "../api/axios";
 
+/**
+ * Symbol → CoinGecko ID mapping
+ */
+const COIN_MAP = {
+  BTC: "bitcoin",
+  ETH: "ethereum",
+  SOL: "solana",
+  ADA: "cardano",
+};
+
+/**
+ * Metadata for UI
+ */
+const ASSET_META = {
+  BTC: {
+    name: "Bitcoin",
+    logo: "https://assets.coingecko.com/coins/images/1/large/bitcoin.png",
+  },
+  ETH: {
+    name: "Ethereum",
+    logo: "https://assets.coingecko.com/coins/images/279/large/ethereum.png",
+  },
+  SOL: {
+    name: "Solana",
+    logo: "https://assets.coingecko.com/coins/images/4128/large/solana.png",
+  },
+  ADA: {
+    name: "Cardano",
+    logo: "https://assets.coingecko.com/coins/images/975/large/cardano.png",
+  },
+};
+
 export default function Holdings() {
   const [holdings, setHoldings] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [showDeletePopup, setShowDeletePopup] = useState(null);
+  const [prices, setPrices] = useState({});
 
-  const [formData, setFormData] = useState({
-    asset: "",
-    symbol: "",
-    quantity: "",
-    price: "",
-  });
-
-  // RESET FORM WHEN MODAL OPENS
-  const openAddModal = () => {
-    setEditing(null);
-    setFormData({
-      asset: "",
-      symbol: "",
-      quantity: "",
-      price: "",
-    });
-    setIsModalOpen(true);
-  };
-
+  /* ---------------- FETCH HOLDINGS ---------------- */
   const fetchHoldings = async () => {
     try {
       const res = await api.get("/holdings");
-      setHoldings(res.data);
+      setHoldings(res.data || []);
     } catch (err) {
-      console.log("Error loading holdings", err);
+      console.error("Error loading holdings", err);
+    }
+  };
+
+  /* ---------------- FETCH LIVE PRICES (INR) ---------------- */
+  const fetchLivePrices = async () => {
+    try {
+      const ids = Object.values(COIN_MAP).join(",");
+      const res = await fetch(
+        `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=inr`
+      );
+      const data = await res.json();
+      setPrices(data);
+    } catch (err) {
+      console.error("Error fetching prices", err);
     }
   };
 
   useEffect(() => {
     fetchHoldings();
+    fetchLivePrices();
   }, []);
 
-  const handleSave = async () => {
-    try {
-      if (editing) {
-        await api.put(`/holdings/${editing.id}`, formData);
-      } else {
-        await api.post("/holdings", formData);
-      }
-
-      setIsModalOpen(false);
-      fetchHoldings();
-    } catch (err) {
-      console.log("Error saving holding", err);
-    }
-  };
-
-  const handleDelete = async () => {
-    try {
-      await api.delete(`/holdings/${showDeletePopup.id}`);
-      setShowDeletePopup(null);
-      fetchHoldings();
-    } catch (err) {
-      console.log("Delete error", err);
-    }
-  };
+  /* ---------------- PORTFOLIO TOTAL ---------------- */
+  const portfolioValue = holdings.reduce((sum, h) => {
+    const coinId = COIN_MAP[h.symbol];
+    const livePrice = prices[coinId]?.inr || 0;
+    return sum + h.quantity * livePrice;
+  }, 0);
 
   return (
     <DashboardLayout>
       <div className="p-10 text-white min-h-screen cyberpunk-bg">
 
-        {/* Title */}
-        <div className="flex justify-between items-center mb-10">
-          <h1 className="text-4xl font-bold tracking-wide text-white">
-  Holdings Overview
-</h1>
+        {/* TITLE */}
+        <div className="mb-10">
+          <h1 className="text-4xl font-bold tracking-wide">
+            Holdings Overview
+          </h1>
+          <p className="text-gray-400 mt-2">
+            Holdings are automatically calculated from your trades
+          </p>
+        </div>
+{/* ALLOCATION CHART */}
+<div className="glass-card p-6 rounded-2xl border border-white/10 shadow-xl mb-10">
+  <h2 className="text-xl font-semibold mb-6">Portfolio Allocation</h2>
 
+  {holdings.map((h) => {
+    const coinId = COIN_MAP[h.symbol];
+    const livePrice = prices[coinId]?.inr || 0;
+    const value = h.quantity * livePrice;
+    const percent =
+      portfolioValue > 0 ? (value / portfolioValue) * 100 : 0;
 
-          <button
-            onClick={openAddModal}
-            className="px-6 py-3 rounded-xl font-semibold neon-button"
-          >
-            + Add Holding
-          </button>
+    return (
+      <div key={h.id} className="mb-6">
+        {/* LABEL */}
+        <div className="flex justify-between text-sm mb-1">
+          <span className="font-medium">
+            {ASSET_META[h.symbol]?.name} ({h.symbol})
+          </span>
+          <span className="text-gray-400">
+            {percent.toFixed(2)}%
+          </span>
         </div>
 
-        {/* Table */}
+        {/* BAR */}
+        <div className="w-full h-3 bg-white/10 rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all"
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+
+        {/* VALUE */}
+        <div className="text-xs text-gray-400 mt-1">
+          Value: ₹{Number(value).toLocaleString("en-IN")}
+        </div>
+      </div>
+    );
+  })}
+</div>
+
+        {/* TABLE */}
         <div className="glass-card p-6 rounded-2xl border border-white/10 shadow-xl">
           <table className="w-full text-left">
             <thead>
               <tr className="text-gray-300 border-b border-white/10 uppercase text-sm">
                 <th className="pb-4">Asset</th>
-                <th className="pb-4">Symbol</th>
                 <th className="pb-4">Quantity</th>
-                <th className="pb-4">Price</th>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-400 text-right">
-  ACTIONS
-</th>
-
+                <th className="pb-4">Avg Buy</th>
+                <th className="pb-4">Live Price</th>
+                <th className="pb-4">Total Value</th>
+                <th className="pb-4">Weight</th>
               </tr>
             </thead>
 
             <tbody>
-              {holdings.map((h) => (
-                <tr
-                  key={h.id}
-                  className="border-b border-white/5 hover:bg-white/5 transition-all group"
-                >
-                  <td className="py-4 font-semibold">{h.asset}</td>
-                  <td>{h.symbol}</td>
-                  <td>{h.quantity}</td>
-                  <td className="text-green-400">${h.price}</td>
-
-                  {/* Action buttons slide in */}
-                  <td className="text-right opacity-0 group-hover:opacity-100 transition-all">
-                    <button
-                      onClick={() => {
-                        setEditing(h);
-                        setFormData(h);
-                        setIsModalOpen(true);
-                      }}
-                      className="px-4 py-2 text-sm rounded-lg edit-btn"
-                    >
-                      Edit
-                    </button>
-
-                    <button
-                      onClick={() => setShowDeletePopup(h)}
-                      className="px-4 py-2 text-sm rounded-lg delete-btn"
-                    >
-                      Delete
-                    </button>
+              {holdings.length === 0 && (
+                <tr>
+                  <td colSpan="6" className="py-10 text-center text-gray-400">
+                    No holdings yet — add trades to see positions
                   </td>
                 </tr>
-              ))}
+              )}
+
+              {holdings.map((h) => {
+                const coinId = COIN_MAP[h.symbol];
+                const livePrice = prices[coinId]?.inr || 0;
+                const totalValue = h.quantity * livePrice;
+                const weight =
+                  portfolioValue > 0
+                    ? ((totalValue / portfolioValue) * 100).toFixed(2)
+                    : "0.00";
+
+                return (
+                  <tr
+                    key={h.id}
+                    className="border-b border-white/5 hover:bg-white/5 transition-all"
+                  >
+                    {/* ASSET */}
+                    <td className="py-4">
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={ASSET_META[h.symbol]?.logo}
+                          alt={h.symbol}
+                          className="w-7 h-7 rounded-full"
+                        />
+                        <div>
+                          <div className="font-semibold">
+                            {ASSET_META[h.symbol]?.name}
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            {h.symbol}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* QUANTITY */}
+                    <td>{h.quantity}</td>
+
+                    {/* AVG BUY */}
+                    <td>
+                      ₹{Number(h.price).toLocaleString("en-IN")}
+                    </td>
+
+                    {/* LIVE PRICE */}
+                    <td className="text-blue-400">
+                      ₹{Number(livePrice).toLocaleString("en-IN")}
+                      <span className="ml-1 text-xs text-green-400">LIVE</span>
+                    </td>
+
+                    {/* TOTAL VALUE */}
+                    <td className="text-green-400 font-semibold">
+                      ₹{Number(totalValue).toLocaleString("en-IN")}
+                    </td>
+
+                    {/* WEIGHT */}
+                    <td>{weight}%</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
-
-        {/* MODAL */}
-        {isModalOpen && (
-          <div className="modal-overlay">
-            <div className="modal-box">
-              <h2 className="text-2xl font-bold mb-6 neon-text">
-                {editing ? "Edit Holding" : "Add Holding"}
-              </h2>
-
-              {/* FORM */}
-              <div className="flex flex-col gap-4">
-
-                <input
-                  className="cyber-input"
-                  placeholder="Asset name"
-                  value={formData.asset}
-                  onChange={(e) => setFormData({ ...formData, asset: e.target.value })}
-                />
-
-                <input
-                  className="cyber-input"
-                  placeholder="Symbol"
-                  value={formData.symbol}
-                  onChange={(e) => setFormData({ ...formData, symbol: e.target.value })}
-                />
-
-                <input
-                  className="cyber-input"
-                  placeholder="Quantity"
-                  type="number"
-                  value={formData.quantity}
-                  onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                />
-
-                <input
-                  className="cyber-input"
-                  placeholder="Price"
-                  type="number"
-                  value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                />
-              </div>
-
-              <div className="flex justify-end gap-4 mt-8">
-                <button
-                  onClick={() => setIsModalOpen(false)}
-                  className="cancel-btn"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  onClick={handleSave}
-                  className="save-btn"
-                >
-                  Save
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* DELETE POPUP */}
-        {showDeletePopup && (
-          <div className="modal-overlay">
-            <div className="delete-box">
-              <h3 className="text-xl font-semibold mb-4">Delete Holding?</h3>
-              <p className="text-gray-300 mb-6">
-                Are you sure you want to delete <b>{showDeletePopup.asset}</b>?
-              </p>
-
-              <div className="flex justify-end gap-4">
-                <button className="cancel-btn" onClick={() => setShowDeletePopup(null)}>
-                  Cancel
-                </button>
-
-                <button className="delete-btn px-6 py-2" onClick={handleDelete}>
-                  Delete
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
       </div>
     </DashboardLayout>
   );

@@ -24,6 +24,48 @@ export default function PnLReport() {
       .finally(() => setLoading(false));
   }, []);
 
+  /* ---------------- EXPORT CSV ---------------- */
+  const exportToCSV = () => {
+    if (!summary || !summary.assets || summary.assets.length === 0) {
+      alert("No P&L data to export");
+      return;
+    }
+
+    const headers = [
+      "Asset",
+      "Quantity",
+      "Avg Buy Price (INR)",
+      "Current Price (INR)",
+      "Unrealized P&L (INR)",
+      "Realized P&L (INR)"
+    ];
+
+    const rows = summary.assets.map((p) => [
+      p.asset,
+      p.quantity,
+      p.avgBuyPrice,
+      p.currentPrice,
+      p.unrealizedPnL,
+      p.realizedPnL
+    ]);
+
+    let csvContent =
+      headers.join(",") + "\n" +
+      rows.map((row) => row.join(",")).join("\n");
+
+    const blob = new Blob([csvContent], {
+      type: "text/csv;charset=utf-8;"
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "pnl_report.csv";
+    link.click();
+
+    URL.revokeObjectURL(url);
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -54,14 +96,23 @@ export default function PnLReport() {
     <DashboardLayout>
       <div className="p-10 text-white min-h-screen cyberpunk-bg">
 
-        {/* TITLE */}
-        <div className="mb-10">
-          <h1 className="text-4xl font-bold tracking-wide">
-            P&amp;L Report
-          </h1>
-          <p className="text-gray-400 mt-2">
-            Realized and unrealized profit &amp; loss
-          </p>
+        {/* TITLE + EXPORT */}
+        <div className="flex justify-between items-center mb-10">
+          <div>
+            <h1 className="text-4xl font-bold tracking-wide">
+              P&amp;L Report
+            </h1>
+            <p className="text-gray-400 mt-2">
+              Realized and unrealized profit &amp; loss
+            </p>
+          </div>
+
+          <button
+            onClick={exportToCSV}
+            className="px-6 py-2 rounded-lg bg-green-600 hover:bg-green-700 font-semibold"
+          >
+            Export CSV
+          </button>
         </div>
 
         {/* SUMMARY CARDS */}

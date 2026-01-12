@@ -26,25 +26,40 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
+            // Disable CSRF (JWT based)
             .csrf(csrf -> csrf.disable())
+
+            // Enable CORS
             .cors(Customizer.withDefaults())
+
+            // Stateless session (JWT)
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+            // Authorization rules
             .authorizeHttpRequests(auth -> auth
-                // 🔥 ALLOW PREFLIGHT REQUESTS
+
+                // 🔥 Allow preflight requests
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
 
-                // PUBLIC
+                // 🔓 PUBLIC ENDPOINTS
                 .requestMatchers("/auth/**").permitAll()
-                .requestMatchers("/pricing/**").permitAll() 
-                // PROTECTED
+                .requestMatchers("/pricing/**").permitAll()
+                .requestMatchers("/pnl/**").permitAll()
+                .requestMatchers("/risk-alerts/**").permitAll()
+
+                // 🔥 MARKET DATA (CoinGecko proxy)
+                .requestMatchers("/api/market/**").permitAll()
+
+                // 🔐 PROTECTED ENDPOINTS
                 .requestMatchers("/holdings/**").authenticated()
                 .requestMatchers("/trades/**").authenticated()
-                .requestMatchers("/risk-alerts/**").permitAll()
-                .requestMatchers("/pnl/**").permitAll()
 
+                // Everything else needs auth
                 .anyRequest().authenticated()
             )
+
+            // JWT filter
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -56,9 +71,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config)
-            throws Exception {
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 }
-

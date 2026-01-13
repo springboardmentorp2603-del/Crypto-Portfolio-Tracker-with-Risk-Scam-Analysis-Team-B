@@ -1,82 +1,200 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../api/axios";
+import { Sparkles, Eye, EyeOff } from "lucide-react";
 
 export default function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [success, setSuccess] = useState(false);
 
+  // 🔒 BACKEND LOGIC – DO NOT TOUCH
   const handleRegister = async () => {
-  try {
-    await api.post("/auth/register", {
-      name,
-      email,
-      password,
-    });
+    if (password !== confirmPassword) {
+      alert("Passwords do not match");
+      return;
+    }
 
-    alert("Registration successful!");
-    window.location.href = "/";
-  } catch (err) {
-    console.log(err);  // <--- IMPORTANT
-    alert("Registration failed");
-  }
-};
+    try {
+      await api.post("/auth/register", {
+        name,
+        email,
+        password,
+      });
 
+      setSuccess(true);
+
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 2000);
+    } catch (err) {
+      console.log(err);
+      alert("Registration failed");
+    }
+  };
 
   return (
-    <div className="min-h-screen flex justify-center items-center relative overflow-hidden bg-black">
-      
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-700/30 via-purple-600/20 to-black animate-pulse"></div>
+    <div className="min-h-screen flex bg-black text-white">
+      {/* LEFT SECTION */}
+      <div className="hidden lg:flex w-1/2 flex-col justify-between p-16 bg-gradient-to-br from-purple-900/40 via-black to-black">
+        <div>
+          <span className="inline-flex items-center px-4 py-1 rounded-full bg-purple-600/20 text-purple-400 text-sm mb-6">
+            🚀 Join CryptoVault
+          </span>
 
-      <div className="absolute w-80 h-80 bg-purple-600/20 rounded-full blur-3xl top-16 left-14 animate-spin-slow"></div>
-      <div className="absolute w-96 h-96 bg-blue-600/20 rounded-full blur-3xl bottom-10 right-10 animate-bounce"></div>
+          <h1 className="text-5xl font-bold leading-tight mb-6">
+            Start Your <br />
+            <span className="text-purple-400">Crypto Adventure</span>
+          </h1>
 
-      <div className="relative z-10 bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl p-10 rounded-3xl w-96">
-        
-        <h1 className="text-4xl font-bold text-white text-center mb-8 drop-shadow-lg">
-          Create Account
-        </h1>
+          <p className="text-gray-400 max-w-md">
+            Join thousands of investors who trust CryptoVault for professional
+            portfolio management and insights.
+          </p>
+        </div>
 
+        <div className="space-y-4">
+          <Feature title="Secure & Private" desc="Bank-grade encryption for your data" />
+          <Feature title="Smart Insights" desc="AI-powered portfolio recommendations" />
+          <Feature title="Real-time Tracking" desc="Live updates across 500+ assets" />
+        </div>
+      </div>
+
+      {/* RIGHT SECTION */}
+      <div className="w-full lg:w-1/2 flex justify-center items-center p-6">
+        <div className="w-full max-w-md bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
+          <h2 className="text-2xl font-bold mb-2">Create Account</h2>
+          <p className="text-gray-400 mb-6">
+            Start tracking your crypto portfolio today
+          </p>
+
+          {/* SUCCESS MESSAGE */}
+          {success && (
+            <div className="mb-4 p-3 rounded-lg border border-green-500/40 bg-green-500/10 text-green-400 text-sm text-center">
+              ✅ Registered successfully! Redirecting to login...
+            </div>
+          )}
+
+          {/* Toggle */}
+          <div className="flex bg-white/10 rounded-lg mb-6 overflow-hidden">
+            <Link
+              to="/"
+              className="w-1/2 py-2 text-center text-gray-400 hover:text-white"
+            >
+              Sign In
+            </Link>
+            <button className="w-1/2 py-2 bg-black text-white font-semibold">
+              Create Account
+            </button>
+          </div>
+
+          {/* FORM */}
+          <div className="space-y-4">
+            <Input label="Full Name" placeholder="Enter your full name" onChange={setName} />
+            <Input label="Email Address" placeholder="Enter your email" onChange={setEmail} />
+
+            {/* Password with Eye Icon */}
+            <PasswordInput
+              label="Password"
+              placeholder="••••••••"
+              onChange={setPassword}
+            />
+
+            <PasswordInput
+              label="Confirm Password"
+              placeholder="Re-enter your password"
+              onChange={setConfirmPassword}
+            />
+          </div>
+
+          <button
+            onClick={handleRegister}
+            disabled={success}
+            className="w-full mt-6 py-3 rounded-lg bg-gradient-to-r from-pink-500 to-purple-600 font-semibold hover:opacity-90 transition disabled:opacity-60"
+          >
+            Create Account
+          </button>
+
+          {/* Demo Mode */}
+          <button className="w-full mt-3 py-3 rounded-lg border border-white/20 text-gray-300 hover:bg-white/5 flex items-center justify-center gap-2">
+            <Sparkles size={18} className="text-purple-400" />
+            Enter Demo Mode
+          </button>
+
+          <div className="mt-4 text-sm text-gray-400">
+            <input type="checkbox" className="mr-2" />
+            I agree to the{" "}
+            <span className="text-purple-400 cursor-pointer">Terms of Service</span>{" "}
+            and{" "}
+            <span className="text-purple-400 cursor-pointer">Privacy Policy</span>
+          </div>
+
+          <p className="text-gray-400 text-sm text-center mt-4">
+            Already have an account?{" "}
+            <Link to="/" className="text-purple-400 hover:underline">
+              Sign In
+            </Link>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* 🔹 Components */
+
+function Feature({ title, desc }) {
+  return (
+    <div className="flex items-start gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
+      <div className="w-10 h-10 rounded-lg bg-purple-600/20 flex items-center justify-center">
+        ⭐
+      </div>
+      <div>
+        <h4 className="font-semibold">{title}</h4>
+        <p className="text-gray-400 text-sm">{desc}</p>
+      </div>
+    </div>
+  );
+}
+
+function Input({ label, type = "text", placeholder, onChange }) {
+  return (
+    <div>
+      <label className="block text-sm text-gray-400 mb-1">{label}</label>
+      <input
+        type={type}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full p-3 rounded-lg bg-black/40 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+      />
+    </div>
+  );
+}
+
+function PasswordInput({ label, placeholder, onChange }) {
+  const [show, setShow] = useState(false);
+
+  return (
+    <div>
+      <label className="block text-sm text-gray-400 mb-1">{label}</label>
+
+      <div className="relative">
         <input
-          type="text"
-          placeholder="Full Name"
-          onChange={(e) => setName(e.target.value)}
-          className="w-full mb-4 p-3 rounded-xl bg-white/10 text-white border border-white/30 
-          placeholder-gray-300 focus:ring-2 focus:ring-purple-500 focus:outline-none"
-        />
-
-        <input
-          type="email"
-          placeholder="Email Address"
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full mb-4 p-3 rounded-xl bg-white/10 text-white border border-white/30 
-          placeholder-gray-300 focus:ring-2 focus:ring-purple-500 focus:outline-none"
-        />
-
-        <input
-          type="password"
-          placeholder="Password"
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full mb-6 p-3 rounded-xl bg-white/10 text-white border border-white/30 
-          placeholder-gray-300 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+          type={show ? "text" : "password"}
+          placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full p-3 pr-10 rounded-lg bg-black/40 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
         />
 
         <button
-          onClick={handleRegister}
-          className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 
-          text-white font-semibold hover:scale-[1.03] active:scale-[0.98] transition-all shadow-lg 
-          hover:shadow-blue-900/50"
+          type="button"
+          onClick={() => setShow(!show)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
         >
-          Register
+          {show ? <EyeOff size={18} /> : <Eye size={18} />}
         </button>
-
-        <p className="text-gray-300 text-center mt-6">
-          Already have an account?{" "}
-          <Link to="/" className="text-blue-400 hover:underline">
-            Login
-          </Link>
-        </p>
       </div>
     </div>
   );

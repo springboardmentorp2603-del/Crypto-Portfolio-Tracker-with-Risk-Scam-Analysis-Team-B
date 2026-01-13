@@ -1,80 +1,94 @@
 package com.CryptoProject.CryptoInfosys.service;
 
 import com.CryptoProject.CryptoInfosys.dto.PricingDTO;
-import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
+import com.CryptoProject.CryptoInfosys.model.PriceSnapshot;
+import com.CryptoProject.CryptoInfosys.repository.PriceSnapshotRepository;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @Service
 public class PricingService {
 
-    private static final String COINGECKO_URL =
-            "https://api.coingecko.com/api/v3/coins/markets" +
-            		"?vs_currency=inr" +
-            "&order=market_cap_desc" +
-            "&per_page=20" +
-            "&page=1" +
-            "&sparkline=true";
+    private final PriceSnapshotRepository priceRepo;
+
+    public PricingService(PriceSnapshotRepository priceRepo) {
+        this.priceRepo = priceRepo;
+    }
+
+    /**
+     * Return latest prices from DB instead of CoinGecko
+     * This avoids API rate limits completely
+     */
+
 
     public List<PricingDTO> getPrices() {
 
-        RestTemplate restTemplate = new RestTemplate();
+        // TEMP circulating supply (can move to DB later)
+        Map<String, Double> circulatingSupply = new HashMap<>();
+        circulatingSupply.put("BTC", 19_700_000.0);
+        circulatingSupply.put("ETH", 120_000_000.0);
+        circulatingSupply.put("SOL", 440_000_000.0);
 
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> response =
-                restTemplate.getForObject(COINGECKO_URL, List.class);
-
+        List<PriceSnapshot> latestSnapshots = priceRepo.findLatestPrices();
         List<PricingDTO> prices = new ArrayList<>();
 
-        if (response == null) {
-            return prices;
-        }
-
-        for (Map<String, Object> coin : response) {
+        for (PriceSnapshot latest : latestSnapshots) {
 
             PricingDTO dto = new PricingDTO();
 
-            dto.id = (String) coin.get("id");
-            dto.symbol = ((String) coin.get("symbol")).toUpperCase();
-            dto.name = (String) coin.get("name");
+            String asset = latest.getAssetSymbol();
+            double latestPrice = latest.getPrice();
 
-            dto.priceUsd = coin.get("current_price") != null
-                    ? ((Number) coin.get("current_price")).doubleValue()
-                    : 0;
+            dto.id = asset;
+            dto.symbol = asset;
+            dto.name = asset;
+            dto.priceUsd = latestPrice;
 
-            dto.change24h = coin.get("price_change_percentage_24h") != null
-                    ? ((Number) coin.get("price_change_percentage_24h")).doubleValue()
-                    : 0;
+            /* ---------------- SPARKLINE ---------------- */
+            List<Double> history =
+                    priceRepo.findRecentPrices(
+                            asset,
+                            PageRequest.of(0, 30)
+                    );
+            Collections.reverse(history);
+            dto.sparkline = history;
 
-            dto.marketCap = coin.get("market_cap") != null
-                    ? ((Number) coin.get("market_cap")).doubleValue()
-                    : 0;
+            /* ---------------- 24H CHANGE ---------------- */
+            LocalDateTime time24hAgo = LocalDateTime.now().minusHours(24);
 
-            // 🔥 SAFE SPARKLINE PARSING (THIS FIXES YOUR ISSUE)
-            Object sparklineObj = coin.get("sparkline_in_7d");
+            List<PriceSnapshot> oldSnapshots =
+                    priceRepo.findPriceBefore(
+                            asset,
+                            time24hAgo,
+                            PageRequest.of(0, 1)
+                    );
 
-            if (sparklineObj instanceof Map<?, ?> sparklineMap) {
-                Object pricesObj = sparklineMap.get("price");
-
-                if (pricesObj instanceof List<?> priceList) {
-                    List<Double> sparkline = new ArrayList<>();
-
-                    for (Object p : priceList) {
-                        if (p instanceof Number) {
-                            sparkline.add(((Number) p).doubleValue());
-                        }
-                    }
-
-                    dto.sparkline = sparkline;
-                }
+            if (!oldSnapshots.isEmpty()) {
+                double oldPrice = oldSnapshots.get(0).getPrice();
+                dto.change24h =
+                        ((latestPrice - oldPrice) / oldPrice) * 100;
+            } else {
+                dto.change24h = 0;
             }
+
+            /* ---------------- MARKET CAP ---------------- */
+            Double supply = circulatingSupply.get(asset);
+            dto.marketCap =
+                    supply != null ? supply * latestPrice : 0;
 
             prices.add(dto);
         }
 
         return prices;
     }
+
+
 }

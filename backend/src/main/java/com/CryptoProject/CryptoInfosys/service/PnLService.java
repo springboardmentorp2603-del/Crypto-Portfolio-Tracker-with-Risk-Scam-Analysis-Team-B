@@ -16,12 +16,18 @@ public class PnLService {
     private final TradeRepository tradeRepo;
     private final PricingService pricingService;
 
-    public PnLService(TradeRepository tradeRepo, PricingService pricingService) {
+    public PnLService(
+            TradeRepository tradeRepo,
+            PricingService pricingService
+    ) {
         this.tradeRepo = tradeRepo;
         this.pricingService = pricingService;
     }
 
-    // 🔥 PUBLIC METHOD (CONTROLLER CALLS THIS)
+    // =========================================================
+    // 🔵 EXISTING WORKING METHODS (DO NOT TOUCH)
+    // =========================================================
+
     public PnLSummaryDTO calculatePnL(Long userId) {
 
         List<PnLDTO> assetPnL = calculateAssetPnL(userId);
@@ -38,7 +44,6 @@ public class PnLService {
         return summary;
     }
 
-    // 🔒 INTERNAL METHOD
     private List<PnLDTO> calculateAssetPnL(Long userId) {
 
         List<Trade> trades = tradeRepo.findByUserId(userId);
@@ -90,6 +95,7 @@ public class PnLService {
 
         return new ArrayList<>(pnlMap.values());
     }
+
     public List<PnLTimelineDTO> calculatePnLTimeline(Long userId) {
 
         List<Trade> trades =
@@ -99,14 +105,12 @@ public class PnLService {
         Map<String, Double> quantityMap = new HashMap<>();
 
         TreeMap<LocalDate, Double> dailyPnL = new TreeMap<>();
-
         double cumulativePnL = 0;
 
         for (Trade t : trades) {
 
             String asset = t.getAssetSymbol();
 
-            // ---------------- BUY ----------------
             if (t.getSide().name().equals("BUY")) {
 
                 double oldQty = quantityMap.getOrDefault(asset, 0.0);
@@ -116,18 +120,15 @@ public class PnLService {
                 double tradePrice = t.getPrice().doubleValue();
 
                 double newQty = oldQty + tradeQty;
-
                 double newAvg =
                         ((oldAvg * oldQty)
                         + (tradePrice * tradeQty))
                         / newQty;
 
-
                 quantityMap.put(asset, newQty);
                 avgBuyPriceMap.put(asset, newAvg);
             }
 
-            // ---------------- SELL ----------------
             if (t.getSide().name().equals("SELL")) {
 
                 double avgBuy = avgBuyPriceMap.getOrDefault(asset, 0.0);
@@ -145,7 +146,8 @@ public class PnLService {
 
                 quantityMap.put(
                         asset,
-                        quantityMap.get(asset) - t.getQuantity().doubleValue()
+                        quantityMap.get(asset)
+                        - t.getQuantity().doubleValue()
                 );
             }
         }
@@ -163,6 +165,30 @@ public class PnLService {
         }
 
         return timeline;
+    }
+
+    // =========================================================
+    // 🔥 NEW DASHBOARD HELPER METHODS (SAFE)
+    // =========================================================
+
+    public double getTotalRealizedPnL(Long userId) {
+        return calculatePnL(userId).totalRealizedPnL;
+    }
+
+    public double getTotalUnrealizedPnL(Long userId) {
+        return calculatePnL(userId).totalUnrealizedPnL;
+    }
+    public double getTotalRealizedPnL(String email) {
+        Long userId = getUserIdByEmail(email);
+        return calculatePnL(userId).totalRealizedPnL;
+    }
+
+    public double getTotalUnrealizedPnL(String email) {
+        Long userId = getUserIdByEmail(email);
+        return calculatePnL(userId).totalUnrealizedPnL;
+    }
+    private Long getUserIdByEmail(String email) {
+        return tradeRepo.findUserIdByEmail(email);
     }
 
 }

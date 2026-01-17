@@ -29,10 +29,10 @@ export default function Login() {
   return (
     <div className="min-h-screen flex bg-black text-white">
       {/* LEFT SECTION */}
-      <div className="hidden lg:flex w-1/2 flex-col justify-between p-16 bg-gradient-to-br from-purple-900/40 via-black to-black">
+      <div className="hidden lg:flex w-1/2 flex-col gap-12 p-16 bg-gradient-to-br from-purple-900/40 via-black to-black">
         <div>
           <span className="inline-flex items-center px-4 py-1 rounded-full bg-purple-600/20 text-purple-400 text-sm mb-6">
-            Join CryptoVault
+            🚀 Join CryptoVault
           </span>
 
           <h1 className="text-5xl font-bold leading-tight mb-6">
@@ -47,9 +47,18 @@ export default function Login() {
         </div>
 
         <div className="space-y-4">
-          <Feature title="Secure & Private" desc="Bank-grade encryption for your data" />
-          <Feature title="Smart Insights" desc="AI-powered portfolio recommendations" />
-          <Feature title="Real-time Tracking" desc="Live updates across 500+ assets" />
+          <Feature
+            title="Secure & Private"
+            desc="Bank-grade encryption for your data"
+          />
+          <Feature
+            title="Smart Insights"
+            desc="AI-powered portfolio recommendations"
+          />
+          <Feature
+            title="Real-time Tracking"
+            desc="Live updates across 500+ assets"
+          />
         </div>
       </div>
 
@@ -166,7 +175,7 @@ function PasswordInput({ label, placeholder, onChange }) {
           onClick={() => setShow(!show)}
           className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
         >
-          {show ? <EyeOff size={18} /> : <Eye size={18} />}
+          {!show ? <EyeOff size={18} /> : <Eye size={18} />}
         </button>
       </div>
     </div>

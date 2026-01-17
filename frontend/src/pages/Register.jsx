@@ -38,7 +38,7 @@ export default function Register() {
   return (
     <div className="min-h-screen flex bg-black text-white">
       {/* LEFT SECTION */}
-      <div className="hidden lg:flex w-1/2 flex-col justify-between p-16 bg-gradient-to-br from-purple-900/40 via-black to-black">
+      <div className="hidden lg:flex w-1/2  flex-col gap-12 p-16 bg-gradient-to-br from-purple-900/40 via-black to-black">
         <div>
           <span className="inline-flex items-center px-4 py-1 rounded-full bg-purple-600/20 text-purple-400 text-sm mb-6">
             🚀 Join CryptoVault
@@ -56,9 +56,18 @@ export default function Register() {
         </div>
 
         <div className="space-y-4">
-          <Feature title="Secure & Private" desc="Bank-grade encryption for your data" />
-          <Feature title="Smart Insights" desc="AI-powered portfolio recommendations" />
-          <Feature title="Real-time Tracking" desc="Live updates across 500+ assets" />
+          <Feature
+            title="Secure & Private"
+            desc="Bank-grade encryption for your data"
+          />
+          <Feature
+            title="Smart Insights"
+            desc="AI-powered portfolio recommendations"
+          />
+          <Feature
+            title="Real-time Tracking"
+            desc="Live updates across 500+ assets"
+          />
         </div>
       </div>
 
@@ -92,8 +101,16 @@ export default function Register() {
 
           {/* FORM */}
           <div className="space-y-4">
-            <Input label="Full Name" placeholder="Enter your full name" onChange={setName} />
-            <Input label="Email Address" placeholder="Enter your email" onChange={setEmail} />
+            <Input
+              label="Full Name"
+              placeholder="Enter your full name"
+              onChange={setName}
+            />
+            <Input
+              label="Email Address"
+              placeholder="Enter your email"
+              onChange={setEmail}
+            />
 
             {/* Password with Eye Icon */}
             <PasswordInput
@@ -124,11 +141,14 @@ export default function Register() {
           </button>
 
           <div className="mt-4 text-sm text-gray-400">
-            <input type="checkbox" className="mr-2" />
-            I agree to the{" "}
-            <span className="text-purple-400 cursor-pointer">Terms of Service</span>{" "}
+            <input type="checkbox" className="mr-2" />I agree to the{" "}
+            <span className="text-purple-400 cursor-pointer">
+              Terms of Service
+            </span>{" "}
             and{" "}
-            <span className="text-purple-400 cursor-pointer">Privacy Policy</span>
+            <span className="text-purple-400 cursor-pointer">
+              Privacy Policy
+            </span>
           </div>
 
           <p className="text-gray-400 text-sm text-center mt-4">

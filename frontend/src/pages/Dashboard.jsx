@@ -1,7 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import DashboardLayout from "../layout/DashboardLayout";
 import api from "../api/axios";
-
 import {
   LineChart,
   Line,
@@ -16,21 +15,24 @@ export default function Dashboard() {
   const [summary, setSummary] = useState(null);
   const [holdings, setHoldings] = useState([]);
   const [pricing, setPricing] = useState([]);
+  const [riskCoins, setRiskCoins] = useState([]);
   const [range, setRange] = useState("30D");
 
-  /* ---------------- FETCH REAL DATA (UNCHANGED BACKEND) ---------------- */
+  /* ---------------- FETCH DATA ---------------- */
   useEffect(() => {
     Promise.all([
       api.get("/api/dashboard/summary"),
       api.get("/holdings"),
       api.get("/pricing"),
+      fetch("http://localhost:8080/api/market/coins").then(res => res.json())
     ])
-      .then(([summaryRes, holdingsRes, pricingRes]) => {
+      .then(([summaryRes, holdingsRes, pricingRes, marketCoins]) => {
         setSummary(summaryRes.data || {});
         setHoldings(holdingsRes.data || []);
         setPricing(pricingRes.data || []);
+        setRiskCoins(marketCoins || []);
       })
-      .catch((err) => {
+      .catch(err => {
         console.error("Dashboard load error", err);
       })
       .finally(() => setLoading(false));
@@ -39,61 +41,64 @@ export default function Dashboard() {
   /* ---------------- HOLDINGS MAP ---------------- */
   const holdingMap = useMemo(() => {
     const map = {};
-    holdings.forEach((h) => {
+    holdings.forEach(h => {
       map[h.symbol?.toUpperCase()] = Number(h.quantity || 0);
     });
     return map;
   }, [holdings]);
 
-  /* ---------------- PORTFOLIO HISTORY (REAL) ---------------- */
+  /* ---------------- PORTFOLIO HISTORY ---------------- */
   const portfolioHistory = useMemo(() => {
     if (!pricing.length) return [];
 
-    const sparklineLength = pricing[0].sparkline.length;
+    const len = pricing[0].sparkline?.length || 0;
     const values = [];
 
-    for (let i = 0; i < sparklineLength; i++) {
+    for (let i = 0; i < len; i++) {
       let total = 0;
-
-      pricing.forEach((coin) => {
+      pricing.forEach(coin => {
         const qty = holdingMap[coin.symbol] || 0;
-        total += qty * coin.sparkline[i];
+        total += qty * (coin.sparkline?.[i] || 0);
       });
-
       values.push(total);
     }
 
     return values;
   }, [pricing, holdingMap]);
 
-  /* ---------------- RANGE HANDLING ---------------- */
-  const rangeMap = {
-    "24H": 1,
-    "7D": 7,
-    "30D": 30,
-  };
+  /* ---------------- RANGE ---------------- */
+  const rangeMap = { "24H": 1, "7D": 7, "30D": 30 };
+  const slicedValues = portfolioHistory.slice(-rangeMap[range]);
 
-  const points = rangeMap[range];
-  const slicedValues = portfolioHistory.slice(-points);
-
-  /* ---------------- DATE GENERATION (REAL, RELATIVE) ---------------- */
   const chartData = useMemo(() => {
     const today = new Date();
-
     return slicedValues.map((value, idx) => {
       const d = new Date(today);
       d.setDate(today.getDate() - (slicedValues.length - 1 - idx));
-
       return {
-        date: d.toLocaleDateString("en-IN", {
-          month: "short",
-          day: "numeric",
-        }),
+        date: d.toLocaleDateString("en-IN", { month: "short", day: "numeric" }),
         value: Math.round(value),
       };
     });
   }, [slicedValues]);
 
+  /* ---------------- RISK LOGIC (SAME AS RiskAlerts.jsx) ---------------- */
+  const classifyRisk = (coin) => {
+    const change = Math.abs(coin.price_change_percentage_24h || 0);
+    if (change >= 10 || coin.market_cap < 1_000_000_000) return "HIGH";
+    if (change >= 5) return "MEDIUM";
+    return "LOW";
+  };
+
+  const dashboardRiskAlerts = riskCoins
+    .map(coin => ({
+      ...coin,
+      risk: classifyRisk(coin),
+    }))
+    .filter(coin => coin.risk === "HIGH" || coin.risk === "MEDIUM")
+    .slice(0, 3);
+
+  /* ---------------- LOADING STATES ---------------- */
   if (loading) {
     return (
       <DashboardLayout>
@@ -105,33 +110,14 @@ export default function Dashboard() {
   if (!summary) {
     return (
       <DashboardLayout>
-        <div className="p-10 text-red-400">
-          Failed to load dashboard data
-        </div>
+        <div className="p-10 text-red-400">Failed to load dashboard data</div>
       </DashboardLayout>
     );
   }
-  const classifyRisk = (coin) => {
-  const change = Math.abs(coin.change24h || 0);
-
-  if (change >= 10 || coin.marketCap < 1_000_000_000) return "HIGH";
-  if (change >= 5) return "MEDIUM";
-  return "LOW";
-};
-const dashboardRiskAlerts = pricing
-  .map((coin) => ({
-    ...coin,
-    risk: classifyRisk(coin),
-  }))
-  .filter(
-    (coin) => coin.risk === "HIGH" || coin.risk === "MEDIUM"
-  )
-  .sort((a, b) => Math.abs(b.change24h) - Math.abs(a.change24h))
-  .slice(0, 3);
-
 
   return (
     <DashboardLayout>
+      
       <div className="p-6 min-h-screen text-white bg-gradient-to-br from-black via-[#06010d] to-black">
 
         {/* HEADER */}
@@ -161,6 +147,7 @@ const dashboardRiskAlerts = pricing
             gradient="from-blue-500/30 to-indigo-600/30"
           />
         </div>
+        
 
         {/* MAIN GRID */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -223,62 +210,36 @@ const dashboardRiskAlerts = pricing
           </div>
 
           {/* RISK ALERTS (REAL DATA COMES FROM YOUR RISK PAGE) */}
-          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
-  <div className="flex justify-between items-center mb-4">
-    <h2 className="text-lg font-semibold flex items-center gap-2">
-      ⚠ Risk Alerts
-    </h2>
-    <a
-      href="/risk-alerts"
-      className="text-sm px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20"
-    >
-      View All
-    </a>
-  </div>
+          <div className="bg-white/5 p-6 rounded-2xl">
+            <div className="flex justify-between mb-4">
+              <h2 className="text-lg font-semibold">⚠ Risk Alerts</h2>
+              <a href="/risk-alerts" className="text-sm text-blue-400">View All</a>
+            </div>
 
-  {dashboardRiskAlerts.map((coin) => (
-    <div
-      key={coin.id}
-      className={`mb-3 p-4 rounded-xl border ${
-        coin.risk === "HIGH"
-          ? "bg-red-500/10 border-red-500/30"
-          : "bg-yellow-400/10 border-yellow-400/30"
-      }`}
-    >
-      <div className="flex justify-between items-center mb-1">
-        <span className="font-semibold">
-          {coin.symbol}
-        </span>
+            {dashboardRiskAlerts.map(coin => (
+              <div
+                key={coin.id}
+                className={`mb-3 p-4 rounded-xl border ${
+                  coin.risk === "HIGH"
+                    ? "bg-red-500/10 border-red-500/30"
+                    : "bg-yellow-400/10 border-yellow-400/30"
+                }`}
+              >
+                <div className="flex justify-between">
+                  <span className="font-semibold">{coin.symbol.toUpperCase()}</span>
+                  <span className="text-xs">{coin.risk} RISK</span>
+                </div>
 
-        <span
-          className={`text-xs px-2 py-0.5 rounded-full ${
-            coin.risk === "HIGH"
-              ? "bg-red-500/20 text-red-400"
-              : "bg-yellow-400/20 text-yellow-300"
-          }`}
-        >
-          {coin.risk} RISK
-        </span>
-      </div>
-
-      <p className="text-sm text-gray-400">
-        24h Change: {coin.change24h.toFixed(2)}%
-      </p>
-
-      <p className="text-xs text-gray-500 mt-1">
-        Market Cap: ₹{Math.round(coin.marketCap / 1e7).toLocaleString("en-IN")} Cr
-      </p>
-    </div>
-  ))}
-
-  {dashboardRiskAlerts.length === 0 && (
-    <p className="text-gray-400 text-sm">
-      No high-risk assets detected.
-    </p>
-  )}
-</div>
+                <p className="text-sm text-gray-400">
+                  {coin.price_change_percentage_24h?.toFixed(2)}%
+                </p>
+                <p className="text-xs text-gray-500">
+                  Market Cap: ₹{Math.round(coin.market_cap / 1e7)} Cr
+                </p>
+              </div>
+            ))}
+          </div>
 {/* ================= ASSET BREAKDOWN ================= */}
-{/* ================= FULL WIDTH ASSET BREAKDOWN ================= */}
 <div className="mt-12 col-span-3 w-full">
 
 <div className="w-full bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8">

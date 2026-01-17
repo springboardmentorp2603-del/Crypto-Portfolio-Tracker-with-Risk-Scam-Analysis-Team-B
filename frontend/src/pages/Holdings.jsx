@@ -113,7 +113,7 @@ export default function Holdings() {
         {/* BAR */}
         <div className="w-full h-3 bg-white/10 rounded-full overflow-hidden">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all"
+            className="h-full rounded-full bg-gradient-to-r from-pink-500/40 to-violet-400/50 transition-all"
             style={{ width: `${percent}%` }}
           />
         </div>
@@ -192,7 +192,7 @@ export default function Holdings() {
                     </td>
 
                     {/* LIVE PRICE */}
-                    <td className="text-blue-400">
+                    <td className="text-purple-400">
                       ₹{Number(livePrice).toLocaleString("en-IN")}
                       <span className="ml-1 text-xs text-green-400">LIVE</span>
                     </td>
